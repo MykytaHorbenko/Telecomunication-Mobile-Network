@@ -1,0 +1,34 @@
+module mobileNetwork {
+
+namespace "mobileNetwork";
+  prefix test;
+
+container subscribers {
+    config true;
+    description "This is a list of subscribers in the system.";
+list user {
+         key "number";
+         config true;
+	leaf number {
+             type string;
+         }
+         leaf userName {
+             type string;
+         }
+         leaf incomingNumber {
+             type string;
+         }
+		 leaf state {
+		     leaf busy {
+		     type bool;
+		     }
+		     leaf active {
+		     type bool;
+		     }
+		     leaf idle {
+		     type bool;
+		     }
+		 }
+	  }
+     }
+}
