@@ -2,19 +2,11 @@
 
 using namespace std;
 
-namespace Netconfagent
+namespace
 {
+    const int MAX_LEN = 100;
 
-const int MAX_LEN = 100;
-
-bool NetConfAgent::initSysrepo() 
-{
-    Connection = std::make_shared<sysrepo::Connection>();
-    Session = std::make_shared<sysrepo::Session>(Connection);
-    std::cout<<"Session began"<<std::endl;
-    return 1;
-}
-/* Helper function for printing nodes. */
+    /* Helper function for printing nodes. */
 void print_node(libyang::S_Data_Node &node)
 {
     libyang::S_Schema_Node schema = node->schema();
@@ -66,25 +58,61 @@ void print_node(libyang::S_Data_Node &node)
     cout << endl;
 }
 
-bool NetConfAgent::fetchData(string _xpath)
+/* Helper function for writing notes to map. */
+void write_node(libyang::S_Data_Node &node, map <string, string>& map)
 {
-    const char *xpath = _xpath.c_str();
-    //sr_datastore_t ds = SR_DS_RUNNING;
-    //const char *xpath = "/mobile-network:core/subscribers[number='001']";
-    
-    try {
-        libyang::S_Data_Node data = Session->get_data(xpath);
-        /* go through all top-level siblings */
-        for (libyang::S_Data_Node &root : data->tree_for()) {
-            /* go through all the children of a top-level sibling */
-            for (libyang::S_Data_Node &node : root->tree_dfs()) {
-                print_node(node);
-            }
-        }
-    } catch( const std::exception& e ) {
-        cout << e.what() << endl;
+    string path, value;
+    libyang::S_Schema_Node schema = node->schema();
+
+    //cout << nodetype2str(schema->nodetype()) << " \"" << schema->name() << '\"' << endl;
+    //cout << '\t' << "Path: " << node->path() << endl;
+    path = node->path();
+    //cout << '\t' << "Default: " << (node->dflt() ? "yes" : "no") << endl;
+
+    /* type-specific print */
+    switch (schema->nodetype()) {
+    case LYS_CONTAINER:
+    {
+        // libyang::Schema_Node_Container scont(schema);
+
+        // cout << '\t' << "Presence: " << (scont.presence() ? "yes" : "no") << endl;
+        break;
     }
-    return 1;
+    case LYS_LEAF:
+    {
+        libyang::Data_Node_Leaf_List leaf(node);
+        libyang::Schema_Node_Leaf sleaf(schema);
+
+        //cout << '\t' << "Value: \"" << leaf.value_str() << '\"' << endl;
+        value = leaf.value_str();
+        //cout << '\t' << "Is key: " << (sleaf.is_key() ? "yes" : "no") << endl;
+        break;
+    }
+    case LYS_LEAFLIST:
+    {
+        libyang::Data_Node_Leaf_List leaflist(node);
+
+        cout << '\t' << "Value: \"" << leaflist.value_str() << '\"' << endl;
+        value = leaflist.value_str();
+        break;
+    }
+    case LYS_LIST:
+    {
+        // libyang::Schema_Node_List slist(schema);
+
+        // cout << '\t' << "Keys:";
+        // for (libyang::S_Schema_Node_Leaf &key : slist.keys()) {
+        //     cout << ' ' << key->name();
+        // }
+        // cout << endl;
+        break;
+    }
+    default:
+        break;
+    }
+    map.emplace(path, value);
+
+    cout << endl;
 }
 
 /* Helper function for printing events. */
@@ -146,113 +174,6 @@ volatile int exit_application = 0;
 void sigint_handler(int signum)
 {
     exit_application = 1;
-}
-
-bool NetConfAgent::subscribeForModelChanges(string _module_name)
-
-{
-    const char *module_name = _module_name.c_str();
-
-    try {
-        /* subscribe for changes in running config */
-        Subscribe = std::make_shared<sysrepo::Subscribe>(Session);
-        auto cb = [] (sysrepo::S_Session Session, const char *module_name, const char *xpath, sr_event_t event,
-            uint32_t request_id) {
-            char change_path[MAX_LEN];
-
-            try {
-                cout << "\n\n ========== Notification " << ev_to_str(event) << " =============================================";
-
-                cout << "\n\n ========== CHANGES: =============================================\n" << endl;
-
-                snprintf(change_path, MAX_LEN, "/%s:*//.", module_name);
-
-                auto it = Session->get_changes_iter(change_path);
-
-                while (auto change = Session->get_change_next(it)) {
-                    print_change(change);
-                }
-
-                cout << "\n\n ========== END OF CHANGES =======================================\n" << endl;
-
-            } catch( const std::exception& e ) {
-                cout << e.what() << endl;
-            }
-            return SR_ERR_OK;
-
-        };
-        Subscribe->module_change_subscribe(module_name, cb);
-
-        /* loop until ctrl-c is pressed / SIGINT is received */
-        signal(SIGINT, sigint_handler);
-        while (!exit_application) {
-            sleep(1000);  /* or do some more useful work... */
-        }
-
-    } catch( const std::exception& e ) {
-        cout << e.what() << endl;
-        return -1;
-    }
-    return 1;
-}
-
-bool NetConfAgent::registerOperData(string _module_name)
-{
-    const char *module_name = _module_name.c_str();
-
-    try {
-        cout << "Application will provide data of " << module_name << endl;
-
-        auto Subscribe = std::make_shared<sysrepo::Subscribe>(Session);
-        auto cb2 = [] (sysrepo::S_Session Session, const char *module_name, const char *path, const char *request_xpath,
-            uint32_t request_id, libyang::S_Data_Node &parent) {
-                cout << "Lambda start" << endl;
-            cout << "\n\n ========== CALLBACK CALLED TO PROVIDE \"" << path << "\" DATA ==========\n" << endl;
-            libyang::S_Context ctx = Session->get_context();
-            libyang::S_Module mod = ctx->get_module(module_name);
-
-            //parent->new_path(ctx, "/mobile-network:core/subscribers[number='001']/userName", "Bob", LYD_ANYDATA_CONSTSTRING, 0);
-
-            auto sub = std::make_shared<libyang::Data_Node>(parent, mod, "subscribers");
-            auto number = std::make_shared<libyang::Data_Node>(sub, mod, "number", "002");
-            auto user_name = std::make_shared<libyang::Data_Node>(sub, mod, "userName", "Bob");
-
-            return SR_ERR_OK;
-            
-            cout << "Lambda finish" << endl;
-        };
-        Subscribe->oper_get_items_subscribe(module_name, cb2, "/mobile-network:core/subscribers[number='001']");
-        
-        cout << "OperData changed" << endl;
-
-        /* loop until ctrl-c is pressed / SIGINT is received */
-        signal(SIGINT, sigint_handler);
-        while (!exit_application) {
-            sleep(1000);  /* or do some more useful work... */
-        }
-
-        cout << "Application exit requested, exiting." << endl;
-
-    } catch( const std::exception& e ) {
-        cout << e.what() << endl;
-        return -1;
-    }
-}
-
-bool NetConfAgent::changeData(string _xpath, string _newValue)
-{
-    const char *xpath = _xpath.c_str();
-    const char *newValue = _newValue.c_str();
-    //Subscribe = std::make_shared<sysrepo::Subscribe>(Session);
-    try {
-        auto value = std::make_shared<sysrepo::Val>(newValue);
-        Session->set_item(xpath, value);
-
-        Session->apply_changes();
-    } catch( const std::exception& e ) {
-        cout << e.what() << endl;
-    }
-    cout << "Data changed" << endl;
 }
 
 /* Helper function for printing values. */
@@ -319,6 +240,147 @@ void print_value(sysrepo::S_Val value)
     return;
 }
 
+}
+
+namespace Netconfagent
+{
+
+bool NetConfAgent::initSysrepo() 
+{
+    Connection = std::make_shared<sysrepo::Connection>();
+    Session = std::make_shared<sysrepo::Session>(Connection);
+    Subscribe = std::make_shared<sysrepo::Subscribe>(Session);
+    std::cout<<"Session began"<<std::endl;
+    return 1;
+}
+
+bool NetConfAgent::fetchData(string _xpath, map <string, string>& map)
+{
+    const char *xpath = _xpath.c_str();
+    //sr_datastore_t ds = SR_DS_RUNNING;
+    //const char *xpath = "/mobile-network:core/subscribers[number='001']";
+    
+    try {
+        libyang::S_Data_Node data = Session->get_data(xpath);
+        /* go through all top-level siblings */
+        for (libyang::S_Data_Node &root : data->tree_for()) {
+            /* go through all the children of a top-level sibling */
+            for (libyang::S_Data_Node &node : root->tree_dfs()) {
+                //print_node(node);
+                write_node(node, map);
+            }
+        }
+    } catch( const std::exception& e ) {
+        cout << e.what() << endl;
+    }
+
+    return 1;
+}
+
+bool NetConfAgent::subscribeForModelChanges(string _module_name)
+
+{
+    const char *module_name = _module_name.c_str();
+
+    try {
+        auto cb = [] (sysrepo::S_Session Session, const char *module_name, const char *xpath, sr_event_t event,
+            uint32_t request_id) {
+            char change_path[MAX_LEN];
+
+            try {
+                cout << "\n\n ========== Notification " << ev_to_str(event) << " =============================================";
+
+                cout << "\n\n ========== CHANGES: =============================================\n" << endl;
+
+                snprintf(change_path, MAX_LEN, "/%s:*//.", module_name);
+
+                auto it = Session->get_changes_iter(change_path);
+
+                while (auto change = Session->get_change_next(it)) {
+                    print_change(change);
+                }
+
+                cout << "\n\n ========== END OF CHANGES =======================================\n" << endl;
+
+            } catch( const std::exception& e ) {
+                cout << e.what() << endl;
+            }
+            return SR_ERR_OK;
+
+        };
+        Subscribe->module_change_subscribe(module_name, cb);
+
+        // /* loop until ctrl-c is pressed / SIGINT is received */
+        // signal(SIGINT, sigint_handler);
+        // while (!exit_application) {
+        //     sleep(1000);  /* or do some more useful work... */
+        // }
+
+    } catch( const std::exception& e ) {
+        cout << e.what() << endl;
+        return -1;
+    }
+    return 1;
+}
+
+bool NetConfAgent::registerOperData(string _module_name)
+{
+    const char *module_name = _module_name.c_str();
+
+    try {
+        cout << "Application will provide data of " << module_name << endl;
+
+        auto cb2 = [] (sysrepo::S_Session Session, const char *module_name, const char *path, const char *request_xpath,
+            uint32_t request_id, libyang::S_Data_Node &parent) {
+                cout << "Lambda start" << endl;
+            cout << "\n\n ========== CALLBACK CALLED TO PROVIDE \"" << path << "\" DATA ==========\n" << endl;
+            libyang::S_Context ctx = Session->get_context();
+            libyang::S_Module mod = ctx->get_module(module_name);
+
+            //parent->new_path(ctx, "/mobile-network:core/subscribers[number='001']/userName", "Bob", LYD_ANYDATA_CONSTSTRING, 0);
+
+            auto sub = std::make_shared<libyang::Data_Node>(parent, mod, "subscribers");
+            auto number = std::make_shared<libyang::Data_Node>(sub, mod, "number", "002");
+            auto user_name = std::make_shared<libyang::Data_Node>(sub, mod, "userName", "Bob");
+
+            return SR_ERR_OK;
+            
+            cout << "Lambda finish" << endl;
+        };
+        Subscribe->oper_get_items_subscribe(module_name, cb2, "/mobile-network:core/subscribers[number='001']");
+        
+        cout << "OperData changed" << endl;
+
+        // /* loop until ctrl-c is pressed / SIGINT is received */
+        // signal(SIGINT, sigint_handler);
+        // while (!exit_application) {
+        //     sleep(1000);  /* or do some more useful work... */
+        // }
+
+        cout << "Application exit requested, exiting." << endl;
+
+    } catch( const std::exception& e ) {
+        cout << e.what() << endl;
+        return -1;
+    }
+}
+
+bool NetConfAgent::changeData(string _xpath, string _newValue)
+{
+    const char *xpath = _xpath.c_str();
+    const char *newValue = _newValue.c_str();
+
+    try {
+        auto value = std::make_shared<sysrepo::Val>(newValue);
+        Session->set_item(xpath, value);
+
+        Session->apply_changes();
+    } catch( const std::exception& e ) {
+        cout << e.what() << endl;
+    }
+    cout << "Data changed" << endl;
+}
+
 bool NetConfAgent::subscribeForRpc(string _module_name, string _rpc_xpath)
 {
     const char *module_name = _module_name.c_str();
@@ -326,10 +388,8 @@ bool NetConfAgent::subscribeForRpc(string _module_name, string _rpc_xpath)
 
     try {
 
-        printf("Application will make an rpc call in %s\n", module_name);
+        cout<<"Application will make an rpc call in "<< module_name<<endl;
 
-        /* subscribe for changes in running config */
-        auto Subscribe = std::make_shared<sysrepo::Subscribe>(Session);
         auto cbVals = [](sysrepo::S_Session session, const char* op_path, const sysrepo::S_Vals input, sr_event_t event, 
         uint32_t request_id, sysrepo::S_Vals_Holder output) 
         {
@@ -375,10 +435,8 @@ bool NetConfAgent::notifySysrepo(string _module_name)
     const char *module_name = _module_name.c_str();
     try {
 
-        printf("Application will send notification in %s\n", module_name);
+        cout<<"Application will send notification in "<<module_name<<endl;
 
-        /* subscribe for changes in running config */
-        auto Subscribe = std::make_shared<sysrepo::Subscribe>(Session);
         auto cbVals = [] (sysrepo::S_Session Session, const sr_ev_notif_type_t notif_type, const char *path,
             const sysrepo::S_Vals vals, time_t timestamp) {
             cout << "\n ========== NOTIF RECEIVED ==========\n" << endl;
