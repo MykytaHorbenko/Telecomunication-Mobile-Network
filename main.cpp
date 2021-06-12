@@ -27,6 +27,7 @@ int main()
 	comandList.push_back("callEnd");
 	comandList.push_back("exit");
 
+	map < string, string > mapFetchData;
 	map < string, std::function <void()> > mapFunc;
 
 	mapFunc.emplace("register", [&arg]() {
@@ -78,13 +79,24 @@ int main()
 		//test.subscribeForModelChanges("mobile-network");
 		//test.changeData("/mobile-network:core/subscribers[number='001']/incomingNumber", "5555555");
 		//test.registerOperData("mobile-network");
-		//test.fetchData("/mobile-network:core/subscribers[number='001']");
-		//test.subscribeForRpc("mobile-network",
-		//"/mobile-network:change-input-number");
+		test.fetchData("/mobile-network:core/subscribers[number='001']", mapFetchData);
+		//map<string, string>::iterator it;
+		//test.subscribeForRpc("mobile-network", "/mobile-network:change-input-number");
 		//test.notifySysrepo("mobile-network");
 		
-	thread th1(&NetConfAgent::subscribeForModelChanges, test);
+	//thread th1(&NetConfAgent::subscribeForModelChanges, test, "mobile-network");
 
+		//deleting empty pairs
+		map < string, string >::iterator it;
+		it = mapFetchData.begin();
+		mapFetchData.erase(it);
+		it = mapFetchData.begin();
+		mapFetchData.erase(it);
+		//printing map
+    	for (auto i : mapFetchData){
+    	cout << i.first << " : " << i.second << endl;
+    	}
+		
 	do
 	{
 		
@@ -122,7 +134,7 @@ int main()
 		arg.clear();
 	} while (comand != "exit");
 
-	th1.detach();
+	//th1.detach();
 }
 
 
