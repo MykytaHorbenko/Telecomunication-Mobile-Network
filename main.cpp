@@ -5,10 +5,13 @@
 #include <map>
 #include <functional>
 #include <thread>
-#include "header/NetConfAgent.hpp"
+//#include "header/NetConfAgent.hpp"
+#include "MobileClient.hpp"
+
 
 using namespace std;
 using namespace Netconfagent;
+using namespace mobileclient;
 
 int main()
 {
@@ -16,6 +19,8 @@ int main()
 	string str;
 	vector<string> arg;
 	stringstream iss;
+
+	MobileClient client;
 
 	vector<string> comandList;
 	comandList.push_back("register");
@@ -30,38 +35,36 @@ int main()
 	map < string, string > mapFetchData;
 	map < string, std::function <void()> > mapFunc;
 
-	mapFunc.emplace("register", [&arg]() {
-		if (arg.size() < 2 || arg.size() > 2) {
+	mapFunc.emplace("register", [&arg, &client]() {
+		if (arg.size() < 1 || arg.size() > 1) {
 			cout << "Wrong count of arguments";
 			return;
 		}
-		cout << "func register called with args: ";
-		for (auto i : arg)
-			cout << i << " ";
-		cout << endl;
+		const string number = arg[0];
+
+		client.registerClient(number, "idle");
+		client.handleModuleChange();
+
 		});
 	mapFunc.emplace("unregister", []() {
 		cout << "func unregister called"<<endl;
 		});
-	mapFunc.emplace("call", [&arg]() {
+	mapFunc.emplace("call", [&arg, &client]() {
 		if (arg.size() < 1 || arg.size() > 1) {
 			cout << "Wrong count of arguments";
 			return;
 		}
-		cout << "func call called with arg: ";
-		for (auto i : arg)
-			cout << i << " ";
-		cout << endl;
+		const string number = arg[0];
+
+		client.makeCall(number);
 		});
-	mapFunc.emplace("name", [&arg]() {
+	mapFunc.emplace("name", [&arg, &client]() {
 		if (arg.size() < 1 || arg.size() > 1) {
 			cout << "Wrong count of arguments";
 			return;
 		}
-		cout << "func name called with arg: ";
-		for (auto i : arg)
-			cout << i << " ";
-		cout << endl;
+		const string name = arg[0];
+		client.setName(name);
 		});
 	mapFunc.emplace("answer", []() {
 		cout << "func answer called"<<endl;
@@ -73,29 +76,18 @@ int main()
 		cout << "func callEnd called" << endl;
 		});
 
-//Test methods
-		NetConfAgent test;
-		test.initSysrepo();
-		//test.subscribeForModelChanges("mobile-network");
-		//test.changeData("/mobile-network:core/subscribers[number='001']/incomingNumber", "5555555");
-		//test.registerOperData("mobile-network");
-		test.fetchData("/mobile-network:core/subscribers[number='001']", mapFetchData);
-		//map<string, string>::iterator it;
-		//test.subscribeForRpc("mobile-network", "/mobile-network:change-input-number");
-		//test.notifySysrepo("mobile-network");
-		
 	//thread th1(&NetConfAgent::subscribeForModelChanges, test, "mobile-network");
 
 		//deleting empty pairs
-		map < string, string >::iterator it;
-		it = mapFetchData.begin();
-		mapFetchData.erase(it);
-		it = mapFetchData.begin();
-		mapFetchData.erase(it);
+		// map < string, string >::iterator it;
+		// it = mapFetchData.begin();
+		// mapFetchData.erase(it);
+		// it = mapFetchData.begin();
+		// mapFetchData.erase(it);
 		//printing map
-    	for (auto i : mapFetchData){
-    	cout << i.first << " : " << i.second << endl;
-    	}
+    	// for (auto i : mapFetchData){
+    	// cout << i.first << " : " << i.second << endl;
+    	// }
 		
 	do
 	{
