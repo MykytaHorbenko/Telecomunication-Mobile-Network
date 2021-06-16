@@ -1,3 +1,5 @@
+#pragma once
+
 #include <unistd.h>
 #include <iostream>
 #include <signal.h>
@@ -8,6 +10,10 @@
 #include "libsysrepocpp/headers/Session.hpp"
 
 using namespace sysrepo;
+namespace mobileclient
+{
+    class MobileClient;
+}
 
 namespace Netconfagent
 {
@@ -31,7 +37,7 @@ class NetConfAgent
 *
 *@return true if ok, otherwise false
 */
-    bool fetchData(string xpath, map <std::string, std::string>& map);
+    bool fetchData(std::string xpath, std::map <std::string, std::string>& map);
 /*
 *@brief subscribeForModelChanges. 
 *This method reacts to changes in the model and prints them
@@ -40,7 +46,7 @@ class NetConfAgent
 *
 *@return true if ok, otherwise false
 */
-    bool subscribeForModelChanges(std::string _module_name);
+    bool subscribeForModelChanges();
 /*
 *@brief registerOperData. 
 *This method receives operdata from the model and set them
@@ -49,7 +55,7 @@ class NetConfAgent
 *
 *@return true if ok, otherwise false
 */
-    bool registerOperData(std::string _module_name);
+    bool registerOperData(mobileclient::MobileClient& client);
 /*
 *@brief subscribeForRpc. 
 *This method makes RPC call and receives return value from the model
