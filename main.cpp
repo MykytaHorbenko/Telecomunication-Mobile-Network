@@ -32,7 +32,7 @@ int main()
 	comandList.push_back("callEnd");
 	comandList.push_back("exit");
 
-	map < string, string > mapFetchData;
+	//map < string, string > mapFetchData;
 	map < string, std::function <void()> > mapFunc;
 
 	mapFunc.emplace("register", [&arg, &client]() {
@@ -43,7 +43,6 @@ int main()
 		const string number = arg[0];
 
 		client.registerClient(number, "idle");
-		client.handleModuleChange();
 
 		});
 	mapFunc.emplace("unregister", []() {
