@@ -325,66 +325,58 @@ bool NetConfAgent::fetchData(string _xpath, map <string, string>& map)
     return 1;
 }
 
-bool NetConfAgent::subscribeForModelChanges()
+bool NetConfAgent::subscribeForModelChanges(mobileclient::MobileClient& client, std::string& xpathForFetch)
 
 {
     const char *module_name = "mobile-network";
 
-        try {
-        auto cb = [] (sysrepo::S_Session Session, const char *module_name, const char *xpath, sr_event_t event,
+        auto cb = [=] (sysrepo::S_Session Session, const char *module_name, const char *xpath, sr_event_t event,
             uint32_t request_id) {
             char change_path[MAX_LEN];
+                if(ev_to_str(event) == "done")
+                cout << "\n\n ========== Notification came ========================="<<endl;
+                map < string, string > mapFetchData;
+                fetchData(xpathForFetch, mapFetchData);
+                client.handleModuleChange(mapFetchData);
+                // cout << "\n\n ========== Notification " << ev_to_str(event) << " =============================================";
 
-            try {
-                cout << "\n\n ========== Notification " << ev_to_str(event) << " =============================================";
+                // cout << "\n\n ========== CHANGES: =============================================\n" << endl;
 
-                cout << "\n\n ========== CHANGES: =============================================\n" << endl;
+                // snprintf(change_path, MAX_LEN, "/%s:*//.", module_name);
 
-                snprintf(change_path, MAX_LEN, "/%s:*//.", module_name);
+                // auto it = Session->get_changes_iter(change_path);
+                
+                // while (auto change = Session->get_change_next(it)) {
+                //     print_change(change);
+                //}
 
-                auto it = Session->get_changes_iter(change_path);
+                // cout << "\n\n ========== END OF CHANGES =======================================\n" << endl;
 
-                while (auto change = Session->get_change_next(it)) {
-                    print_change(change);
-                }
-
-                cout << "\n\n ========== END OF CHANGES =======================================\n" << endl;
-
-            } catch( const std::exception& e ) {
-                cout << e.what() << endl;
-            }
             return SR_ERR_OK;
 
         };
         Subscribe->module_change_subscribe(module_name, cb);
 
-        // /* loop until ctrl-c is pressed / SIGINT is received */
-        // signal(SIGINT, sigint_handler);
-        // while (!exit_application) {
-        //     sleep(1000);  /* or do some more useful work... */
-        // }
-
-    } catch( const std::exception& e ) {
-        cout << e.what() << endl;
-        return -1;
-    }
-    return 1;
+    return true;
 }
 
-bool NetConfAgent::registerOperData(mobileclient::MobileClient& client)
+bool NetConfAgent::registerOperData(mobileclient::MobileClient& client, std::string xpathForSubscribe)
 {
-    string name, xPath;
-    client.handleOperData(name, xPath);
+    //string name, xPath;
+    //client.handleOperData(name, xPath);
     const char *module_name = "mobile-network";
- 
-    string xpathForSubscribe = xPath.substr(0, xPath.find_last_of('/'));
-    
-    try {
 
-        auto cb2 = [=] (sysrepo::S_Session Session, const char *module_name, const char *path, const char *request_xpath,
+    //string xpathForSubscribe = xPath.substr(0, xPath.find_last_of('/'));
+    //const char *xpathForSubscribe;
+    const char *xpathForSubscribePtr = xpathForSubscribe.c_str();
+
+        auto cb2 = [client] (sysrepo::S_Session Session, const char *module_name, const char *path, const char *request_xpath,
             uint32_t request_id, libyang::S_Data_Node &parent) {
 
             cout << "\n\n ========== CALLBACK CALLED TO PROVIDE \"" << path << "\" DATA ==========\n" << endl;
+            string name, xPath;
+            client.handleOperData(name, xPath);
+            //xpathForSubscribe = path;
 
             libyang::S_Context ctx = Session->get_context();
             libyang::S_Module mod = ctx->get_module(module_name);
@@ -398,12 +390,8 @@ bool NetConfAgent::registerOperData(mobileclient::MobileClient& client)
             return SR_ERR_OK;
             
         };
-        Subscribe->oper_get_items_subscribe(module_name, cb2, xpathForSubscribe.c_str());
+        Subscribe->oper_get_items_subscribe(module_name, cb2, xpathForSubscribePtr);
 
-    } catch( const std::exception& e ) {
-        cout << e.what() << endl;
-        return -1;
-    }
 }
 
 bool NetConfAgent::changeData(string _xpath, string _newValue)
