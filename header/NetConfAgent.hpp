@@ -46,7 +46,7 @@ class NetConfAgent
 *
 *@return true if ok, otherwise false
 */
-    bool subscribeForModelChanges();
+    bool subscribeForModelChanges(mobileclient::MobileClient& client, std::string& xpathForFetch);
 /*
 *@brief registerOperData. 
 *This method receives operdata from the model and set them
@@ -55,7 +55,7 @@ class NetConfAgent
 *
 *@return true if ok, otherwise false
 */
-    bool registerOperData(mobileclient::MobileClient& client);
+    bool registerOperData(mobileclient::MobileClient& client, std::string xpathForSubscribe);
 /*
 *@brief subscribeForRpc. 
 *This method makes RPC call and receives return value from the model

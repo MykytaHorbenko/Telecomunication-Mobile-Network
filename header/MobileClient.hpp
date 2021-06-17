@@ -27,9 +27,9 @@ class MobileClient
 */
     bool registerClient(std::string number, std::string state);
 
-    void handleModuleChange();
+    void handleModuleChange(std::map < std::string, std::string >& mapFetchData) const;
 
-    void handleOperData(std::string& name, std::string& xPath);
+    void handleOperData(std::string& name, std::string& xPath) const;
 
     void handleRpc();
 
