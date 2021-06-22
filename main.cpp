@@ -5,6 +5,7 @@
 #include <map>
 #include <functional>
 #include <thread>
+#include <cctype>
 //#include "header/NetConfAgent.hpp"
 #include "MobileClient.hpp"
 
@@ -32,7 +33,6 @@ int main()
 	comandList.push_back("callEnd");
 	comandList.push_back("exit");
 
-	//map < string, string > mapFetchData;
 	map < string, std::function <void()> > mapFunc;
 
 	mapFunc.emplace("register", [&arg, &client]() {
@@ -42,11 +42,22 @@ int main()
 		}
 		const string number = arg[0];
 
+		for(auto i : number)
+ 		{
+			if (!isdigit(i))
+  		 		{
+    	 			cout << "Error! Telephone Number should contains only numerals!!!" << endl;
+		 			return;
+  		 		}
+ 		}
+  		
+		//thread th1(&MobileClient::registerClient, client, number, "idle");
 		client.registerClient(number, "idle");
-
+		//th1.detach();
+		//th1.join();
 		});
-	mapFunc.emplace("unregister", []() {
-		cout << "func unregister called"<<endl;
+	mapFunc.emplace("unregister", [&client]() {
+		client.unRegisterClient();
 		});
 	mapFunc.emplace("call", [&arg, &client]() {
 		if (arg.size() < 1 || arg.size() > 1) {
@@ -65,33 +76,20 @@ int main()
 		const string name = arg[0];
 		client.setName(name);
 		});
-	mapFunc.emplace("answer", []() {
-		cout << "func answer called"<<endl;
+	mapFunc.emplace("answer", [&client]() {
+		client.answerCall();
 		});
-	mapFunc.emplace("reject", []() {
-		cout << "func reject called" << endl;
+	mapFunc.emplace("reject", [&client]() {
+			client.rejectCall();
 		});
-	mapFunc.emplace("callEnd", []() {
-		cout << "func callEnd called" << endl;
+	mapFunc.emplace("callEnd", [&client]() {
+			client.endCall();
 		});
 
 	//thread th1(&NetConfAgent::subscribeForModelChanges, test, "mobile-network");
-
-		//deleting empty pairs
-		// map < string, string >::iterator it;
-		// it = mapFetchData.begin();
-		// mapFetchData.erase(it);
-		// it = mapFetchData.begin();
-		// mapFetchData.erase(it);
-		//printing map
-    	// for (auto i : mapFetchData){
-    	// cout << i.first << " : " << i.second << endl;
-    	// }
 		
 	do
 	{
-		
-		cout << "Please, enter the comand" << endl;
 		cin >> comand;
 
 		getline(cin, str);
