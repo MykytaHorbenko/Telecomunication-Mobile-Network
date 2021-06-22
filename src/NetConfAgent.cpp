@@ -96,7 +96,7 @@ void write_node(libyang::S_Data_Node &node, map <string, string>& map)
     {
         libyang::Data_Node_Leaf_List leaflist(node);
 
-        cout << '\t' << "Value: \"" << leaflist.value_str() << '\"' << endl;
+        //cout << '\t' << "Value: \"" << leaflist.value_str() << '\"' << endl;
         value = leaflist.value_str();
         break;
     }
@@ -116,7 +116,7 @@ void write_node(libyang::S_Data_Node &node, map <string, string>& map)
     }
     map.emplace(path, value);
 
-    cout << endl;
+    //cout << endl;
 }
 
 /* Helper function for printing events. */
@@ -322,7 +322,7 @@ bool NetConfAgent::fetchData(string _xpath, map <string, string>& map)
         cout << e.what() << endl;
     }
 
-    return 1;
+    return true;
 }
 
 bool NetConfAgent::subscribeForModelChanges(mobileclient::MobileClient& client, std::string& xpathForFetch)
@@ -330,14 +330,24 @@ bool NetConfAgent::subscribeForModelChanges(mobileclient::MobileClient& client, 
 {
     const char *module_name = "mobile-network";
 
-        auto cb = [=] (sysrepo::S_Session Session, const char *module_name, const char *xpath, sr_event_t event,
-            uint32_t request_id) {
+        auto cb = [=, &client] (sysrepo::S_Session Session, const char *module_name, const char *xpath, sr_event_t event,
+            uint32_t request_id) mutable {
             char change_path[MAX_LEN];
-                if(ev_to_str(event) == "done")
-                cout << "\n\n ========== Notification came ========================="<<endl;
                 map < string, string > mapFetchData;
+                if(ev_to_str(event) == "done")
+                {
+                //mapFetchData.clear();
+                //cout << "========== Notification came ========================="<<endl;
                 fetchData(xpathForFetch, mapFetchData);
+
+                //printing map
+                // cout<<"Printing map"<<endl;
+    	        // for (auto i : mapFetchData)
+                // {
+    	        // cout << i.first << " : " << i.second << endl;
+    	        // }
                 client.handleModuleChange(mapFetchData);
+                }
                 // cout << "\n\n ========== Notification " << ev_to_str(event) << " =============================================";
 
                 // cout << "\n\n ========== CHANGES: =============================================\n" << endl;
@@ -370,7 +380,7 @@ bool NetConfAgent::registerOperData(mobileclient::MobileClient& client, std::str
     //const char *xpathForSubscribe;
     const char *xpathForSubscribePtr = xpathForSubscribe.c_str();
 
-        auto cb2 = [client] (sysrepo::S_Session Session, const char *module_name, const char *path, const char *request_xpath,
+        auto cb2 = [=, &client] (sysrepo::S_Session Session, const char *module_name, const char *path, const char *request_xpath,
             uint32_t request_id, libyang::S_Data_Node &parent) {
 
             cout << "\n\n ========== CALLBACK CALLED TO PROVIDE \"" << path << "\" DATA ==========\n" << endl;
@@ -428,8 +438,8 @@ bool NetConfAgent::subscribeForRpc(string _module_name, string _rpc_xpath)
             //for(size_t n = 0; n < input->val_cnt(); ++n)
                 print_value(input->val(0));
 
-            out_vals->val(0)->set("/mobile-network:change-input-number/status",
-                    "inputNumber changed",
+            out_vals->val(0)->set("/mobile-network:delete/status",
+                    "data deleted",
                     SR_STRING_T);
 
             return SR_ERR_OK;
@@ -441,7 +451,7 @@ bool NetConfAgent::subscribeForRpc(string _module_name, string _rpc_xpath)
 
         auto in_vals = std::make_shared<sysrepo::Vals>(1);
 
-        in_vals->val(0)->set("/mobile-network:change-input-number/input-number",
+        in_vals->val(0)->set("/mobile-network:dlete/input-number",
                            "00000", SR_STRING_T);
 
         cout << "\n ========== START RPC CALL ==========\n" << endl;
