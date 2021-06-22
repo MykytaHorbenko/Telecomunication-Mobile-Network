@@ -27,7 +27,9 @@ class MobileClient
 */
     bool registerClient(std::string number, std::string state);
 
-    void handleModuleChange(std::map < std::string, std::string >& mapFetchData) const;
+    bool unRegisterClient();
+
+    void handleModuleChange(std::map < std::string, std::string >& mapFetchData) ;
 
     void handleOperData(std::string& name, std::string& xPath) const;
 
@@ -37,12 +39,30 @@ class MobileClient
 
     bool makeCall(std::string number);
 
+    bool answerCall();
+
+    bool rejectCall();
+
+    bool endCall();
+
     void setName(std::string name);
+
+    std::string userName(std::string arg);
+
+    std::string number(std::string arg);
+
+    std::string incNumber(std::string arg);
+
+    std::string state(std::string arg);
+
     
     private:
-    NetConfAgent agent;
+    std::unique_ptr<Netconfagent::NetConfAgent> agent;
     std::string _name;
     std::string _number;
+    std::string _incomingNumber;
+    
+
 
 };
 
